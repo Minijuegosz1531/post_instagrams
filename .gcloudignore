@@ -1,0 +1,53 @@
+# Git
+.git
+.gitignore
+.github
+
+# Docker local
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+README.md
+*.md
+!CLOUD-RUN-DEPLOYMENT.md
+
+# Scripts de desarrollo
+setup.sh
+setup.bat
+docker-start.sh
+docker-start.bat
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Uploads temporales (se crean en el contenedor)
+uploads/*
+!uploads/.gitkeep
+
+# Credenciales de ejemplo
+config/google-credentials.example.json
+
+# Node modules
+node_modules
+
+# Archivos de prueba
+ejemplo.csv
+respuesta.json
+
+# Vendor (se instala en build)
+vendor/
+
+# Composer lock (opcional, incluirlo si quieres versiones exactas)
+# composer.lock

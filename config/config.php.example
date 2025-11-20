@@ -1,0 +1,18 @@
+<?php
+
+// Configuración de Apify
+define('APIFY_API_TOKEN', 'your_apify_api_token_here');
+
+// Configuración de Google Sheets
+define('GOOGLE_CREDENTIALS_PATH', __DIR__ . '/google-credentials.json');
+define('GOOGLE_SHEET_ID', 'your_google_sheet_id_here');
+define('GOOGLE_SHEET_RANGE', 'Posts'); // Nombre de la hoja donde se insertarán los datos
+define('GOOGLE_SHEET_READ_URL', 'Urls'); // Leer url para el scraping
+
+// Configuración de FTP
+define('FTP_HOST', 'your_ftp_host_here');
+define('FTP_USER', 'your_ftp_user_here');
+define('FTP_PASSWORD', 'your_ftp_password_here');
+
+// Configuración general
+date_default_timezone_set('America/Bogota'); // Ajusta según tu zona horaria

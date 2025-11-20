@@ -1,0 +1,15 @@
+{
+    "name": "instagram-scraper/app",
+    "description": "Aplicación para scraping de Instagram y envío a Google Sheets",
+    "type": "project",
+    "require": {
+        "php": ">=7.4",
+        "google/apiclient": "^2.12"
+    },
+    "autoload": {
+        "classmap": [
+            "GoogleSheetsHelper.php",
+            "FTPHelper.php"
+        ]
+    }
+}

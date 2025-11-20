@@ -1,0 +1,42 @@
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+README.md
+*.md
+
+# Scripts
+setup.sh
+setup.bat
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Uploads temporales
+uploads/*
+!uploads/.gitkeep
+
+# Credenciales de ejemplo
+config/google-credentials.example.json
+
+# Node modules (si los hubiera)
+node_modules
+
+# Archivos de prueba
+ejemplo.csv
