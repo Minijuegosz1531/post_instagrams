@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const formData = new FormData(form);
 
         try {
-            const response = await fetch('process.php', {
+            const response = await fetch('process-urls.php', {
                 method: 'POST',
                 body: formData
             });

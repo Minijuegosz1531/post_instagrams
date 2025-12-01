@@ -10,15 +10,21 @@
     <div class="container">
         <header>
             <h1>Instagram Post Scraper</h1>
-            <p>Sube un archivo CSV con URLs de Instagram para obtener métricas</p>
+            <p>Ingresa URLs de Instagram para obtener métricas y enviarlas a Google Sheets</p>
         </header>
 
         <div class="upload-section">
-            <form action="process.php" method="POST" enctype="multipart/form-data" id="uploadForm">
+            <form action="process-urls.php" method="POST" id="uploadForm">
                 <div class="form-group">
-                    <label for="csvFile">Seleccionar archivo CSV:</label>
-                    <input type="file" name="csvFile" id="csvFile" accept=".csv" required>
-                    <small>El archivo debe contener URLs de Instagram (una por línea)</small>
+                    <label for="urlsInput">Ingresa las URLs de Instagram:</label>
+                    <textarea
+                        name="urls"
+                        id="urlsInput"
+                        rows="10"
+                        placeholder="https://www.instagram.com/p/ABC123...&#10;https://www.instagram.com/reel/XYZ789...&#10;&#10;Pega aquí las URLs de Instagram (posts o reels), una por línea"
+                        required
+                    ></textarea>
+                    <small>Pega las URLs de Instagram - posts o reels (una por línea)</small>
                 </div>
 
                 <div class="form-group">

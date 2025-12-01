@@ -32,7 +32,7 @@ class GoogleSheetsHelper {
         }
 
         // Preparar headers si es la primera vez
-        $headers = ['Fecha', 'URL', 'Caption', 'Usuario', 'Comentarios', 'Vistas', 'Reproducciones', 'Imagen'];
+        $headers = ['Fecha', 'URL', 'Caption', 'Usuario', 'Comentarios', 'Vistas', 'Reproducciones', 'Imagen', 'Posteado en'];
 
         // Convertir datos a formato de array
         $values = [];
@@ -54,17 +54,18 @@ class GoogleSheetsHelper {
                 $row['commentsCount'],
                 $row['videoViewCount'],
                 $row['videoPlayCount'],
-                $row['imageUrl'] ?? ''
+                $row['imageUrl'] ?? '',
+                $row['timestamp'] ?? ''
             ];
         }
 
-        $range = GOOGLE_SHEET_RANGE . '!A:H';
+        $range = GOOGLE_SHEET_RANGE . '!A:I';
         $body = new \Google\Service\Sheets\ValueRange([
             'values' => $values
         ]);
 
         $params = [
-            'valueInputOption' => 'RAW'
+            'valueInputOption' => 'USER_ENTERED'
         ];
 
         $result = $this->service->spreadsheets_values->append(
@@ -85,7 +86,7 @@ class GoogleSheetsHelper {
      */
     private function checkIfHasHeaders($spreadsheetId) {
         try {
-            $range = GOOGLE_SHEET_RANGE . '!A1:H1';
+            $range = GOOGLE_SHEET_RANGE . '!A1:I1';
             $response = $this->service->spreadsheets_values->get($spreadsheetId, $range);
             $values = $response->getValues();
 
@@ -112,7 +113,7 @@ class GoogleSheetsHelper {
     }
 
     /**
-     * Buscar una URL en la hoja y retornar información de la fila
+     * Buscar una URL en la hoja y retornar información de la fila MÁS RECIENTE
      *
      * @param string $spreadsheetId ID de la hoja
      * @param string $url URL a buscar
@@ -120,7 +121,7 @@ class GoogleSheetsHelper {
      */
     public function findUrlRow($spreadsheetId, $url) {
         try {
-            $range = GOOGLE_SHEET_RANGE . '!A:H';
+            $range = GOOGLE_SHEET_RANGE . '!A:I';
             $response = $this->service->spreadsheets_values->get($spreadsheetId, $range);
             $values = $response->getValues();
 
@@ -128,13 +129,15 @@ class GoogleSheetsHelper {
                 return null;
             }
 
-            // Buscar la URL (columna B, índice 1)
+            // Buscar la URL (columna B, índice 1) - encontrar la ÚLTIMA aparición
+            $lastMatch = null;
+
             foreach ($values as $index => $row) {
                 // Saltar header (fila 0)
                 if ($index === 0) continue;
 
                 if (isset($row[1]) && $row[1] === $url) {
-                    return [
+                    $lastMatch = [
                         'rowIndex' => $index + 1, // +1 porque las hojas empiezan en 1
                         'fecha' => $row[0] ?? '',
                         'imageUrl' => $row[7] ?? '' // Columna H (índice 7)
@@ -142,7 +145,7 @@ class GoogleSheetsHelper {
                 }
             }
 
-            return null;
+            return $lastMatch;
         } catch (Exception $e) {
             error_log('Error al buscar URL: ' . $e->getMessage());
             return null;
@@ -152,12 +155,30 @@ class GoogleSheetsHelper {
     /**
      * Verificar si una fecha es del día actual
      *
-     * @param string $fecha Fecha en formato Y-m-d H:i:s
+     * @param string $fecha Fecha en formato Y-m-d o Y-m-d H:i:s
      * @return bool
      */
     public function isSameDay($fecha) {
+        if (empty($fecha)) {
+            return false;
+        }
+
+        // Limpiar espacios en blanco
+        $fecha = trim($fecha);
         $today = date('Y-m-d');
-        $fechaDate = date('Y-m-d', strtotime($fecha));
+
+        // Si la fecha ya está en formato Y-m-d, compararla directamente
+        if (strlen($fecha) === 10 && strpos($fecha, ':') === false) {
+            return $today === $fecha;
+        }
+
+        // Si tiene hora, extraer solo la fecha
+        $timestamp = strtotime($fecha);
+        if ($timestamp === false) {
+            return false;
+        }
+
+        $fechaDate = date('Y-m-d', $timestamp);
         return $today === $fechaDate;
     }
 
@@ -178,16 +199,17 @@ class GoogleSheetsHelper {
             $data['commentsCount'],
             $data['videoViewCount'],
             $data['videoPlayCount'],
-            $data['imageUrl'] ?? ''
+            $data['imageUrl'] ?? '',
+            $data['timestamp'] ?? ''
         ]];
 
-        $range = GOOGLE_SHEET_RANGE . '!A' . $rowIndex . ':H' . $rowIndex;
+        $range = GOOGLE_SHEET_RANGE . '!A' . $rowIndex . ':I' . $rowIndex;
         $body = new \Google\Service\Sheets\ValueRange([
             'values' => $values
         ]);
 
         $params = [
-            'valueInputOption' => 'RAW'
+            'valueInputOption' => 'USER_ENTERED'
         ];
 
         $result = $this->service->spreadsheets_values->update(

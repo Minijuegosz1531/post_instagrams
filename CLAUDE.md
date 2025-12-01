@@ -102,7 +102,7 @@ The application requires three sets of credentials configured in `config/config.
 
 3. **process.php** - Processing pipeline (also used by cron-process.php):
    - Validates and parses uploaded CSV file
-   - Extracts Instagram URLs using regex pattern: `/instagram\.com\/p\/[A-Za-z0-9_-]+/`
+   - Extracts Instagram URLs using regex pattern: `/instagram\.com\/(p|reel)\/[A-Za-z0-9_-]+/`
    - Calls Apify actor via `callApifyActor()` function
    - Polls for results using `waitForApifyResults()` (max 5 minutes, 5-second intervals)
    - Retrieves dataset via `getApifyDataset()`

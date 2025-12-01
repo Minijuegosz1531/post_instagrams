@@ -1,69 +1,48 @@
-#!/usr/bin/env php
 <?php
 /**
- * Script para ejecutar desde cronjob
- * Lee URLs desde Google Sheets (hoja "Urls") y las procesa automáticamente
- *
- * Uso: php cron-process.php
- * O desde cron: cada 5 minutos - ver CRONJOB-SETUP.md para ejemplos
+ * Procesa URLs de Instagram enviadas desde el formulario
+ * Ejecuta la misma lógica que cron-process.php pero desde la interfaz web
  */
 
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/GoogleSheetsHelper.php';
 require_once __DIR__ . '/FTPHelper.php';
 
-// Función para logging
-function log_message($message) {
-    echo '[' . date('Y-m-d H:i:s') . '] ' . $message . PHP_EOL;
+header('Content-Type: application/json');
+
+// Verificar que se enviaron URLs
+if (!isset($_POST['urls']) || empty(trim($_POST['urls']))) {
+    echo json_encode(['error' => 'No se enviaron URLs']);
+    exit;
 }
 
-log_message('🚀 Iniciando proceso automático de scraping...');
+// Extraer URLs del textarea (una por línea)
+$inputUrls = explode("\n", $_POST['urls']);
+$urls = [];
+
+foreach ($inputUrls as $url) {
+    $url = trim($url);
+    if (empty($url)) {
+        continue;
+    }
+
+    // Validar que sea una URL de Instagram (post o reel)
+    if (preg_match('/instagram\.com\/(p|reel)\/[A-Za-z0-9_-]+/', $url)) {
+        $urls[] = $url;
+    }
+}
+
+if (empty($urls)) {
+    echo json_encode(['error' => 'No se encontraron URLs válidas de Instagram']);
+    exit;
+}
 
 // Inicializar Google Sheets Helper
 try {
     $sheetsHelper = new GoogleSheetsHelper(GOOGLE_CREDENTIALS_PATH);
-    log_message('✅ Conexión con Google Sheets establecida');
 } catch (Exception $e) {
-    log_message('❌ Error al conectar con Google Sheets: ' . $e->getMessage());
-    exit(1);
-}
-
-// Leer URLs desde Google Sheets
-try {
-    $urlsRange = GOOGLE_SHEET_READ_URL . '!A:A';
-    $urlsData = $sheetsHelper->getData(GOOGLE_SHEET_ID, $urlsRange);
-
-    if (empty($urlsData)) {
-        log_message('⚠️  No se encontraron URLs en la hoja "' . GOOGLE_SHEET_READ_URL . '"');
-        exit(0);
-    }
-
-    // Extraer URLs (saltar header si existe)
-    $urls = [];
-    foreach ($urlsData as $index => $row) {
-        if ($index === 0 && isset($row[0]) && strtolower($row[0]) === 'url') {
-            continue; // Saltar header
-        }
-
-        if (!empty($row[0])) {
-            $url = trim($row[0]);
-            // Validar que sea una URL de Instagram (post o reel)
-            if (preg_match('/instagram\.com\/(p|reel)\/[A-Za-z0-9_-]+/', $url)) {
-                $urls[] = $url;
-            }
-        }
-    }
-
-    log_message('📋 URLs encontradas: ' . count($urls));
-
-    if (empty($urls)) {
-        log_message('⚠️  No se encontraron URLs válidas de Instagram');
-        exit(0);
-    }
-
-} catch (Exception $e) {
-    log_message('❌ Error al leer URLs: ' . $e->getMessage());
-    exit(1);
+    echo json_encode(['error' => 'Error al conectar con Google Sheets: ' . $e->getMessage()]);
+    exit;
 }
 
 // Preparar payload para Apify
@@ -73,17 +52,13 @@ $apifyPayload = [
     'username' => $urls
 ];
 
-log_message('🔄 Llamando a Apify con ' . count($urls) . ' URLs...');
-
 // Llamar a Apify
 $apifyResponse = callApifyActor($apifyPayload);
 
 if (!$apifyResponse || isset($apifyResponse['error'])) {
-    log_message('❌ Error al obtener datos de Apify: ' . ($apifyResponse['error'] ?? 'Desconocido'));
-    exit(1);
+    echo json_encode(['error' => 'Error al obtener datos de Apify: ' . ($apifyResponse['error'] ?? 'Desconocido')]);
+    exit;
 }
-
-log_message('✅ Datos recibidos de Apify: ' . count($apifyResponse) . ' posts');
 
 // Procesar resultados y extraer campos necesarios
 $processedData = [];
@@ -94,10 +69,9 @@ $currentDate = date('Y-m-d');
 try {
     $ftpHelper = new FTPHelper(FTP_HOST, FTP_USER, FTP_PASSWORD);
     $ftpHelper->connect();
-    log_message('✅ Conexión FTP establecida');
 } catch (Exception $e) {
-    log_message('❌ Error al conectar con FTP: ' . $e->getMessage());
-    exit(1);
+    echo json_encode(['error' => 'Error al conectar con FTP: ' . $e->getMessage()]);
+    exit;
 }
 
 foreach ($apifyResponse as $index => $item) {
@@ -107,8 +81,6 @@ foreach ($apifyResponse as $index => $item) {
         continue;
     }
 
-    log_message('📝 Procesando: ' . $inputUrl);
-
     // Verificar si la URL ya existe en Google Sheets
     $existingRow = $sheetsHelper->findUrlRow(GOOGLE_SHEET_ID, $inputUrl);
 
@@ -116,21 +88,14 @@ foreach ($apifyResponse as $index => $item) {
     $shouldDownloadImage = true;
 
     if ($existingRow !== null) {
-        log_message('   🔍 URL encontrada en fila ' . $existingRow['rowIndex']);
-        log_message('   📅 Fecha en Sheets: "' . $existingRow['fecha'] . '" (length: ' . strlen($existingRow['fecha']) . ')');
-        log_message('   📅 Fecha actual: "' . $currentDate . '" (length: ' . strlen($currentDate) . ')');
-
         // Reutilizar imagen existente (sin importar la fecha)
         $imageUrl = $existingRow['imageUrl'];
         $shouldDownloadImage = false;
-        log_message('   ♻️  Reutilizando imagen existente: ' . $imageUrl);
 
         $isSameDay = $sheetsHelper->isSameDay($existingRow['fecha']);
-        log_message('   🔍 isSameDay() result: ' . ($isSameDay ? 'TRUE' : 'FALSE'));
 
         if ($isSameDay) {
             // Es del mismo día - actualizar la fila existente
-            log_message('   🔄 ✅ Misma fecha detectada - actualizando fila existente');
 
             // Preparar datos actualizados
             $row = [
@@ -148,21 +113,14 @@ foreach ($apifyResponse as $index => $item) {
             // Actualizar la fila existente
             $sheetsHelper->updateRow(GOOGLE_SHEET_ID, $existingRow['rowIndex'], $row);
             $updatedRows[] = $row;
-            log_message('   ✅ Fila actualizada');
             continue;
 
-        } else {
-            // Es de otro día - agregar nueva fila pero con la misma imagen
-            log_message('   📅 Fecha diferente - creando nueva fila con imagen existente');
         }
-    } else {
-        log_message('   ➕ URL nueva - descargando imagen');
     }
 
     // Descargar y subir imagen si es necesario
     if ($shouldDownloadImage && !empty($item['displayUrl'])) {
         try {
-            log_message('   📥 Descargando imagen...');
             // Generar nombre único para la imagen
             $shortCode = $item['shortCode'] ?? uniqid();
             $extension = 'jpg';
@@ -170,9 +128,9 @@ foreach ($apifyResponse as $index => $item) {
 
             // Subir imagen al FTP
             $imageUrl = $ftpHelper->uploadImageFromUrl($item['displayUrl'], $fileName);
-            log_message('   ✅ Imagen subida: ' . $imageUrl);
         } catch (Exception $e) {
-            log_message('   ⚠️  Error al subir imagen: ' . $e->getMessage());
+            // Si falla la subida de imagen, continuar sin ella
+            error_log('Error al subir imagen: ' . $e->getMessage());
         }
     }
 
@@ -189,28 +147,34 @@ foreach ($apifyResponse as $index => $item) {
         'timestamp' => $item['timestamp'] ?? ''
     ];
     $processedData[] = $row;
-    log_message('   ✅ Datos procesados');
 }
 
 // Enviar nuevas filas a Google Sheets
 try {
     if (!empty($processedData)) {
         $result = $sheetsHelper->appendData(GOOGLE_SHEET_ID, $processedData);
-        log_message('✅ ' . count($processedData) . ' filas nuevas agregadas a Google Sheets');
     }
 
+    $message = [];
+    if (!empty($processedData)) {
+        $message[] = count($processedData) . ' filas nuevas agregadas';
+    }
     if (!empty($updatedRows)) {
-        log_message('✅ ' . count($updatedRows) . ' filas actualizadas');
+        $message[] = count($updatedRows) . ' filas actualizadas';
     }
 
-    $totalProcessed = count($processedData) + count($updatedRows);
-    log_message('🎉 Proceso completado exitosamente - Total procesado: ' . $totalProcessed);
-
-    exit(0);
+    echo json_encode([
+        'success' => true,
+        'data' => array_merge($processedData, $updatedRows),
+        'message' => implode(', ', $message)
+    ]);
 
 } catch (Exception $e) {
-    log_message('❌ Error al enviar a Google Sheets: ' . $e->getMessage());
-    exit(1);
+    echo json_encode([
+        'success' => false,
+        'data' => $processedData,
+        'error' => 'Error al enviar a Google Sheets: ' . $e->getMessage()
+    ]);
 }
 
 /**
@@ -289,7 +253,6 @@ function waitForApifyResults($runId) {
         }
 
         $attempt++;
-        log_message('   ⏳ Esperando resultados de Apify... (' . $attempt . '/' . $maxAttempts . ')');
     }
 
     return ['error' => 'Timeout esperando resultados de Apify'];

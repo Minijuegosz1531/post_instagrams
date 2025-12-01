@@ -33,8 +33,8 @@ if (($handle = fopen($uploadPath, 'r')) !== false) {
     while (($data = fgetcsv($handle, 1000, ',')) !== false) {
         if (!empty($data[0])) {
             $url = trim($data[0]);
-            // Validar que sea una URL de Instagram
-            if (preg_match('/instagram\.com\/p\/[A-Za-z0-9_-]+/', $url)) {
+            // Validar que sea una URL de Instagram (post o reel)
+            if (preg_match('/instagram\.com\/(p|reel)\/[A-Za-z0-9_-]+/', $url)) {
                 $urls[] = $url;
             }
         }
@@ -114,7 +114,8 @@ foreach ($apifyResponse as $index => $item) {
                 'commentsCount' => $item['commentsCount'] ?? 0,
                 'videoViewCount' => $item['videoViewCount'] ?? 0,
                 'videoPlayCount' => $item['videoPlayCount'] ?? 0,
-                'imageUrl' => $imageUrl
+                'imageUrl' => $imageUrl,
+                'timestamp' => $item['timestamp'] ?? ''
             ];
 
             // Actualizar la fila existente
@@ -152,7 +153,8 @@ foreach ($apifyResponse as $index => $item) {
         'commentsCount' => $item['commentsCount'] ?? 0,
         'videoViewCount' => $item['videoViewCount'] ?? 0,
         'videoPlayCount' => $item['videoPlayCount'] ?? 0,
-        'imageUrl' => $imageUrl
+        'imageUrl' => $imageUrl,
+        'timestamp' => $item['timestamp'] ?? ''
     ];
     $processedData[] = $row;
 }

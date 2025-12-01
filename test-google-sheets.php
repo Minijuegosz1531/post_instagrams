@@ -97,7 +97,8 @@ foreach ($apifyResponse as $index => $item) {
                 'commentsCount' => $item['commentsCount'] ?? 0,
                 'videoViewCount' => $item['videoViewCount'] ?? 0,
                 'videoPlayCount' => $item['videoPlayCount'] ?? 0,
-                'imageUrl' => $imageUrl
+                'imageUrl' => $imageUrl,
+                'timestamp' => $item['timestamp'] ?? ''
             ];
 
             $sheetsHelper->updateRow(GOOGLE_SHEET_ID, $existingRow['rowIndex'], $row);
@@ -137,7 +138,8 @@ foreach ($apifyResponse as $index => $item) {
         'commentsCount' => $item['commentsCount'] ?? 0,
         'videoViewCount' => $item['videoViewCount'] ?? 0,
         'videoPlayCount' => $item['videoPlayCount'] ?? 0,
-        'imageUrl' => $imageUrl
+        'imageUrl' => $imageUrl,
+        'timestamp' => $item['timestamp'] ?? ''
     ];
     $processedData[] = $row;
 }
